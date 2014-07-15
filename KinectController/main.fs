@@ -5,6 +5,8 @@ open System.Drawing
 open Microsoft.Kinect
 open System.Diagnostics
 open System.Reactive.Linq
+open System.Net.Sockets
+open System.Windows.Forms
 
 let sensor = KinectSensor.KinectSensors.[0]
 
@@ -22,28 +24,28 @@ let ToPoint(s,c) = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(s, c)
 let ColorFormat = ColorImageFormat.RgbResolution640x480Fps30
 let runOnThisThread (ui: UIElement) f = ui.Dispatcher.Invoke(new System.Action (f), null) |> ignore
 
-let mutable brush = System.Windows.Media.Brushes.DarkTurquoise
-let rhEllipse = new System.Windows.Shapes.Ellipse(Height = 20.0, Width = 20.0, Fill = brush)
-let lhEllipse = new System.Windows.Shapes.Ellipse(Height = 20.0, Width = 20.0, Fill = brush)
+let mutable rightBrush = System.Windows.Media.Brushes.DarkTurquoise
+let mutable leftBrush = System.Windows.Media.Brushes.DarkTurquoise
+
+let rightH = new System.Windows.Shapes.Rectangle(Height = 40.0, Width = 40.0, Fill = rightBrush)
+let leftH = new System.Windows.Shapes.Rectangle(Height = 40.0, Width = 40.0, Fill = leftBrush)
 
 let grid = new System.Windows.Controls.Grid()
-let canvas = new System.Windows.Controls.Canvas(Background = System.Windows.Media.Brushes.Transparent)
+let canvas = new System.Windows.Controls.Canvas(Background = System.Windows.Media.Brushes.Transparent) 
 let image = new System.Windows.Controls.Image(Height = 600.0, Width = 800.0)
+
+let port = 2000
+let ipAddr = "192.168.1.1"
+let mutable sender = new TcpClient(ipAddr, port)
 
 grid.Children.Add(image) |> ignore
 grid.Children.Add(canvas) |> ignore
-canvas.Children.Add(rhEllipse) |> ignore
-canvas.Children.Add(lhEllipse) |> ignore
-
-let SetPosition (element: FrameworkElement, point: ColorImagePoint, jointType: JointType) =
-    runOnThisThread element <| fun () -> 
-        element.Margin <- new Thickness(float point.X, float point.Y, 0.0, 0.0)
+canvas.Children.Add(rightH) |> ignore
+canvas.Children.Add(leftH) |> ignore
 
 let GetPoints (skeleton: Skeleton) =
     let leftHand = ToPoint(skeleton.Joints.[JointType.HandLeft].Position, ColorFormat)
     let rightHand = ToPoint(skeleton.Joints.[JointType.HandRight].Position, ColorFormat)
-    SetPosition(lhEllipse, leftHand, JointType.HandLeft) |> ignore
-    SetPosition(rhEllipse, rightHand, JointType.HandRight) |> ignore
     (leftHand.Y, rightHand.Y)
 
 let ExtractHands (args: SkeletonFrameReadyEventArgs) = 
@@ -74,14 +76,35 @@ let toHand splitter =
     let h = hands 
             |> Observable.map splitter 
             |> Observable.map (toDifference (ref 0)) 
-    h.Buffer(10, 1)
-    |> Observable.map (System.Linq.Enumerable.Average >> (*) 3.0 >> int)
+    h.Buffer(20, 5)
+    |> Observable.map (System.Linq.Enumerable.Average >> (*) 3.5 >> int)
     |> Observable.filter ((<) eps) 
 
 let left, right = toHand fst, toHand snd
 
-left.Subscribe (printfn "l : %A ") |> ignore
-right.Subscribe (printfn "r : %A ") |> ignore
+let ChangeColor motor x = 
+    let scale = Convert.ToByte(x / 100 * 255)
+    if motor = 1 then
+        leftBrush.Color <- Media.Color.FromArgb(100uy, scale ,scale, scale)
+    else 
+        rightBrush.Color <- Media.Color.FromArgb(100uy, scale ,scale, scale)
+
+let SendRequest request =
+    let pow = if snd request < 2 * eps then 0 
+              elif snd request > 100 then 100 
+              else snd request
+    ChangeColor (fst request) pow
+    let req = [|Convert.ToByte((fst request) : int); Convert.ToByte((pow) : int)|]
+    sender.GetStream().Write(req, 0, req.Length)
+
+let SendToLeftMotor x =
+    (1, x) |> SendRequest
+
+let SendToRightMotor x =
+    (2, x) |> SendRequest
+
+left.Subscribe SendToLeftMotor |> ignore
+right.Subscribe SendToRightMotor |> ignore
 
 sensor.ColorFrameReady |> Observable.subscribe ColorFrameReady
         |> ignore  
@@ -96,6 +119,7 @@ let WindowLoaded (sender : obj) (args: RoutedEventArgs) =
     |> Async.Start 
  
 let WindowUnloaded (sender : obj) (args: RoutedEventArgs) = 
+    SendRequest(0, 0)
     sensor.Stop()
 
 let window = new Window(Height = 650.0, Width = 800.0, Title = "Kinect Application")
