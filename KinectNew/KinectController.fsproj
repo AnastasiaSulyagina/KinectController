@@ -88,6 +88,11 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\GameMode\GameMode.fsproj">
+      <Name>GameMode</Name>
+      <Project>{b87cac32-39b9-4c06-b176-c11f7609b37e}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\WpfApplication1\WpfApplication1.csproj">
       <Name>WpfApplication1</Name>
       <Project>{aba2adb6-5e3e-4540-b9f1-4d7452ccf991}</Project>
