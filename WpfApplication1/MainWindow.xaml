@@ -1,7 +1,6 @@
-﻿<Window
+﻿<Window x:Name="form" x:Class="WpfApplication1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:GameMode="clr-namespace:GameMode;assembly=GameMode" x:Name="form" x:Class="WpfApplication1.MainWindow"
         Title="Kinect controller" Height="600" Width="740" MaxHeight="600" MinHeight="600" MinWidth="800" MaxWidth="800" x:FieldModifier="public">
     <Grid Margin="0,0,0,0">
         <Image x:Name="image" HorizontalAlignment="Left" Height="480" Margin="10,10,0,0" VerticalAlignment="Top" Width="640" MinWidth="640" MaxWidth="640" MaxHeight="480" MinHeight="480" Stretch="None" x:FieldModifier="public"/>
@@ -13,12 +12,14 @@
         <Label Content="Enter IP" HorizontalAlignment="Left" Height="29" Margin="10,495,0,0" VerticalAlignment="Top" Width="80" FontSize="14"/>
         <Label Content="Enter port" HorizontalAlignment="Left" Height="29" Margin="10,525,0,0" VerticalAlignment="Top" Width="80" FontSize="14"/>
         <TextBox x:Name="portBox" HorizontalAlignment="Left" Height="25" Margin="95,529,0,0" TextWrapping="Wrap" Text="2000" VerticalAlignment="Top" Width="100" FontSize="14" Background="#FFDAF5FD" BorderBrush="#FFB7C8D4" x:FieldModifier="public"/>
-        <TextBox x:Name="IPBox" HorizontalAlignment="Left" Height="25" Margin="95,499,0,0" TextWrapping="Wrap" Text="192.168.1.1" VerticalAlignment="Top" Width="100" FontSize="14" Background="#FFDAF5FD" BorderBrush="#FFB7C8D4" x:FieldModifier="public"/>
-        <ComboBox x:Name="modeChooser" ItemsSource="{Binding ModeList}" DisplayMemberPath="Name" SelectedValuePath="Mode"  HorizontalAlignment="Left" 
-			Margin="650,501,0,0" VerticalAlignment="Top" Width="125" Height="25" FontSize="14" Foreground="#FF035B85" x:FieldModifier="public" SelectionChanged="modeChooser_SelectionChanged" SelectedIndex="0" IsEnabled="False"/>
+        <TextBox x:Name="IPBox" HorizontalAlignment="Left" Height="25" Margin="95,499,0,0" TextWrapping="Wrap" Text="192.168.0.129" VerticalAlignment="Top" Width="100" FontSize="14" Background="#FFDAF5FD" BorderBrush="#FFB7C8D4" x:FieldModifier="public"/>
+        <ComboBox x:Name="modeChooser" HorizontalAlignment="Left" Margin="650,501,0,0" VerticalAlignment="Top" Width="125" Height="25" FontSize="14" SelectedIndex="0" Foreground="#FF035B85" x:FieldModifier="public">
+            <ComboBoxItem Content="floating mode"/>
+            <ComboBoxItem Content="flapping mode"/>
+        </ComboBox>
         <Label Content="Select mode" HorizontalAlignment="Left" Height="29" Margin="545,499,0,0" VerticalAlignment="Top" Width="100" FontSize="14" RenderTransformOrigin="3.67,0.483"/>
-        <ToggleButton x:Name="conectionButton" Content="Connection" HorizontalAlignment="Left" Height="25" Margin="209,529,0,0" VerticalAlignment="Top" Width="114" Background="#FF006A9C" BorderBrush="#FF006A9C" x:FieldModifier="public" FontSize="14" FontWeight="SemiBold" Checked="conectionButton_Checked"/>
-        <Label x:Name="instructionMessage" Content="{Binding SelectedItem.Description, ElementName=modeChooser}" HorizontalAlignment="Left" Margin="339,528,0,0" VerticalAlignment="Top" Width="436" x:FieldModifier="public" FontSize="15"/>
+        <Button x:Name="conectionButton" Content="Connection" HorizontalAlignment="Left" Height="25" Margin="209,529,0,0" VerticalAlignment="Top" Width="114" Background="#FF77B0CB" BorderBrush="#FF2D7597" x:FieldModifier="public"/>
+        <Label x:Name="instructionMessage" Content="" HorizontalAlignment="Left" Margin="339,531,0,0" VerticalAlignment="Top" Width="436" x:FieldModifier="public" FontSize="15"/>
 
     </Grid>
 </Window>

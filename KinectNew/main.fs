@@ -8,7 +8,7 @@ open System.Net.Sockets
 open System.Runtime.InteropServices
 open System.Windows.Media.Imaging
 open WpfApplication1
-open GameMode
+
 let sensor = try
                  KinectSensor.KinectSensors.[0]
              with :? System.ArgumentOutOfRangeException as e -> 
@@ -24,13 +24,19 @@ let window = new MainWindow()
 let mutable minHeight = 600.0
 let mutable maxHeight = 0.0
 let eps = 10
-let mutable mode = (window.modeChooser.SelectedValue :?> GameMode)
+let mutable mode = "floatingMode" 
 let ToPoint(s,c) = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(s, c)
 let ColorFormat = ColorImageFormat.RgbResolution640x480Fps30
 
+
 let mutable port = window.portBox.Text
 let mutable ipAddr = window.IPBox.Text
-let mutable sender = null
+let mutable sender = try
+                        new TcpClient(ipAddr, Convert.ToInt32(port))
+                     with :? SocketException as e ->
+                        printfn "No connection with trik. Check connection and restart"
+                        exit(0) 
+                        null
 
 let GetPoints (skeleton: Skeleton) =
     let l = skeleton.Joints.[JointType.HandLeft]
@@ -55,37 +61,17 @@ let ColorFrameReady (args: ColorImageFrameReadyEventArgs) =
         | null -> ()
         | videoFrame -> 
                 videoFrame.CopyPixelDataTo(pixelData)
+//                let bmap = new Bitmap(640, 480, Imaging.PixelFormat.Format32bppRgb)
+//                let bmapdata = bmap.LockBits(
+//                                    new Rectangle(0, 0, 640, 480),
+//                                    Imaging.ImageLockMode.WriteOnly, 
+//                                    bmap.PixelFormat)
+//                let ptr = bmapdata.Scan0;
+//                Marshal.Copy(pixelData, 0, ptr, videoFrame.PixelDataLength)
+//                bmap.UnlockBits(bmapdata)
                 runOnThisThread window.image <| fun() -> 
                     window.image.Source <- BitmapSource.Create(640, 480, 96.0, 96.0, Media.PixelFormats.Bgr32, null, pixelData, 640 * 4)
-
-
-
-let setConnection args = 
-
-    runOnThisThread window.instructionMessage <| fun() -> 
-        window.instructionMessage.Content <- "Establishing connection. Please wait ..."
-    sender <- try
-                runOnThisThread window.instructionMessage <| fun() -> 
-                    window.instructionMessage.Content <- "Trik connected. Choose the mode and start playing."
-                new TcpClient(ipAddr, Convert.ToInt32(port))
-                with :? SocketException as e ->
-                runOnThisThread window.instructionMessage <| fun() -> 
-                    window.instructionMessage.Content <- "No connection with trik. Check IP, Port and restart"
-                    window.conectionButton.IsChecked <- new Nullable<bool>(false)
-                null
-    if sender <> null then
-        let startApp =
-            async {
-                sensor.Start()
-                sensor.ColorStream.Enable()
-                sensor.SkeletonStream.Enable()
-                sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30)
-            }
-            |> Async.Start 
-            window.modeChooser.IsEnabled <- true
-        startApp |> ignore
-
-
+                  
 let hands = sensor.SkeletonFrameReady |> Observable.choose ExtractHands 
    
 let calibrate (x: int) =
@@ -93,7 +79,16 @@ let calibrate (x: int) =
         window.instructionMessage.Content <- "Calibration. Put your hands up and down slowly for a few seconds"
     maxHeight <- Math.Max(maxHeight, float x)
     minHeight <- Math.Min(minHeight, float x)
-    printfn "%A %A\n" maxHeight minHeight
+    printfn "%A\n" maxHeight
+
+let changeMode (args: Controls.SelectionChangedEventArgs) =
+    let selected: System.Windows.Controls.ComboBoxItem = args.AddedItems.[0] :?> System.Windows.Controls.ComboBoxItem
+    if selected.Content :?> string = "flapping mode" then 
+        mode <- "flappingMode"
+        window.instructionMessage.Content <- "Flap your hands quickly to move the robot"
+    else
+        mode <- "floatingMode"
+        window.instructionMessage.Content <- "Put your hands up and down for speed regulating"
 
 let toDifference prev x =
     let res = abs(x - !prev)
@@ -101,76 +96,61 @@ let toDifference prev x =
     res 
 
 let floatingScale (x: float) = 
-    int <| ((x - minHeight) * 100.0 / (maxHeight - minHeight)) 
+    ((x - minHeight) / (maxHeight - minHeight)) * 100.0
 
 let flappingScale (x: int) = 
     if x < 2 * eps then 0
     elif x > 100 then 100
     else x
 
-let toMovingHand splitter =
-    
-//    let flappingSpeed (data: Collections.Generic.IList<_>) = 
-//        let a = Array.zeroCreate data.Count 
-//        data.CopyTo(a, 0)
-//        let mutable m = 0
-//        for i = 1 to a.Length - 1 do
-//            let d = 3 * (abs <| a.[i] - a.[i - 1])
-//            m <- max m d 
-//        m
-//
-//    let h = Observable.Buffer(Observable.map splitter hands, 20, 1) 
-//    let h' = if mode = GameMode.Flapping then
-//                  h
-//                  |> Observable.map flappingSpeed
-//                  |> Observable.filter ((<) eps) 
-//                  |> Observable.map flappingScale
-//             else h
-//                  |> Observable.map System.Linq.Enumerable.Average
-//                  |> Observable.filter (fun x -> x < minHeight && x > maxHeight)
-//                  |> Observable.map floatingScale
-//    h'
+let toFloatingHand (splitter: int*int -> int) =
+    hands |> Observable.map splitter 
+          |> fun x -> Observable.Buffer(x, 20, 1)
+          |> Observable.map (System.Linq.Enumerable.Average)
+          |> Observable.filter (fun x -> x < minHeight && x > maxHeight)
+          |> Observable.map (floatingScale >> int)
 
-let left, right = toMovingHand fst, toMovingHand snd
+let toFlappingHand splitter = 
+    hands |> Observable.map (splitter >> toDifference (ref 0)) 
+          |> fun x -> Observable.Buffer(x, 20, 5)
+          |> Observable.map (System.Linq.Enumerable.Average >> (*) 3.7 >> int)
+          |> Observable.filter ((<) eps) 
+          |> Observable.map (flappingScale)
 
-let changeMode args =
-    mode <- window.modeChooser.SelectedValue :?> GameMode
+let left, right = if mode = "flappingMode"
+                    then toFlappingHand fst, toFlappingHand snd
+                  else toFloatingHand fst, toFloatingHand snd
 
 let SendRequest (request: Collections.Generic.IList<int>) =
     runOnThisThread window.instructionMessage <| fun() -> 
         window.instructionMessage.Content <- ""
     let req = [|Convert.ToByte((request.[0]) : int); Convert.ToByte((request.[1]) : int); 48uy; 48uy|]
-    if sender <> null then
-        sender.GetStream().Write(req, 0, req.Length)
-    else 
-        runOnThisThread window.instructionMessage <| fun() -> 
-                    window.instructionMessage.Content <- "No connection with trik. Check IP, Port and restart"
+    sender.GetStream().Write(req, 0, req.Length)
    
-let ts = new TimeSpan(0, 0, 15)
+let ts = new TimeSpan(0, 0, 3)
 let tm = DateTimeOffset.Now + ts
-left.TakeUntil(tm)|>
-    Observable.subscribe calibrate |> ignore
-right.TakeUntil(tm)|> 
-    Observable.subscribe calibrate |> ignore
+
+left.TakeUntil(tm).Subscribe calibrate |> ignore
+right.TakeUntil(tm).Subscribe calibrate |> ignore
 let handsDispose = Observable.CombineLatest([left; right]) 
                     |> fun x -> Observable.SkipUntil(x, tm)
                     |> Observable.subscribe SendRequest                
 
-let modesDispose = window.modeChooser.SelectionChanged 
-                    |> Observable.subscribe changeMode 
-
-let establishConnectionDispose = window.conectionButton.Checked
-                                    |> Observable.subscribe setConnection
-
-let breakConnectionDispose = window.conectionButton.Unchecked
-                                    |> Observable.subscribe (fun x -> sender <- null)
+window.modeChooser.SelectionChanged |> Observable.subscribe changeMode 
+                                    |> ignore
 
 let colorDispose = sensor.ColorFrameReady 
-                    |> Observable.subscribe ColorFrameReady
+                   |> Observable.subscribe ColorFrameReady
         
 let WindowLoaded (sender : obj) (args: EventArgs) = 
-    runOnThisThread window.instructionMessage <| fun() -> 
-        window.instructionMessage.Content <- "Enter trik IP and Port. Then press the connection button to start"
+    async {
+        sensor.Start()
+        sensor.ColorStream.Enable()
+        sensor.SkeletonStream.Enable()
+        sensor.DepthStream.Enable(DepthImageFormat.Resolution640x480Fps30)
+        colorDispose |> ignore
+    }
+    |> Async.Start 
  
 let WindowUnloaded (sender : obj) (args: EventArgs) = 
     sensor.Stop()
