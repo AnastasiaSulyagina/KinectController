@@ -1,8 +1,0 @@
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\bin\Debug\GameMode.XML
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\bin\Debug\GameMode.dll
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\bin\Debug\GameMode.pdb
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\bin\Debug\FSharp.Core.dll
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\bin\Debug\FSharp.Core.xml
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\obj\Debug\GameMode.fsprojResolveAssemblyReference.cache
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\obj\Debug\GameMode.dll
-C:\Users\анастасия\Documents\Visual Studio 2012\Projects\KinectNew\GameMode\obj\Debug\GameMode.pdb

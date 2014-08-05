@@ -12,12 +12,12 @@
         </Ellipse>
         <Label Content="Enter IP" HorizontalAlignment="Left" Height="29" Margin="10,495,0,0" VerticalAlignment="Top" Width="80" FontSize="14"/>
         <Label Content="Enter port" HorizontalAlignment="Left" Height="29" Margin="10,525,0,0" VerticalAlignment="Top" Width="80" FontSize="14"/>
-        <TextBox x:Name="portBox" HorizontalAlignment="Left" Height="25" Margin="95,529,0,0" TextWrapping="Wrap" Text="2000" VerticalAlignment="Top" Width="100" FontSize="14" Background="#FFDAF5FD" BorderBrush="#FFB7C8D4" x:FieldModifier="public"/>
+        <TextBox x:Name="portBox" HorizontalAlignment="Left" Height="25" Margin="95,529,0,0" TextWrapping="Wrap" Text="9999" VerticalAlignment="Top" Width="100" FontSize="14" Background="#FFDAF5FD" BorderBrush="#FFB7C8D4" x:FieldModifier="public"/>
         <TextBox x:Name="IPBox" HorizontalAlignment="Left" Height="25" Margin="95,499,0,0" TextWrapping="Wrap" Text="192.168.1.1" VerticalAlignment="Top" Width="100" FontSize="14" Background="#FFDAF5FD" BorderBrush="#FFB7C8D4" x:FieldModifier="public"/>
         <ComboBox x:Name="modeChooser" ItemsSource="{Binding ModeList}" DisplayMemberPath="Name" SelectedValuePath="Mode"  HorizontalAlignment="Left" 
-			Margin="650,501,0,0" VerticalAlignment="Top" Width="125" Height="25" FontSize="14" Foreground="#FF035B85" x:FieldModifier="public" SelectionChanged="modeChooser_SelectionChanged" SelectedIndex="0" IsEnabled="False"/>
+			Margin="650,501,0,0" VerticalAlignment="Top" Width="125" Height="25" FontSize="14" Foreground="#FF035B85" x:FieldModifier="public" SelectedIndex="0" IsEnabled="False"/>
         <Label Content="Select mode" HorizontalAlignment="Left" Height="29" Margin="545,499,0,0" VerticalAlignment="Top" Width="100" FontSize="14" RenderTransformOrigin="3.67,0.483"/>
-        <ToggleButton x:Name="conectionButton" Content="Connection" HorizontalAlignment="Left" Height="25" Margin="209,529,0,0" VerticalAlignment="Top" Width="114" Background="#FF006A9C" BorderBrush="#FF006A9C" x:FieldModifier="public" FontSize="14" FontWeight="SemiBold" Checked="conectionButton_Checked"/>
+        <ToggleButton x:Name="conectionButton" Content="Connect" HorizontalAlignment="Left" Height="25" Margin="209,529,0,0" VerticalAlignment="Top" Width="114" Background="#FF006A9C" BorderBrush="#FF006A9C" x:FieldModifier="public" FontSize="14" FontWeight="SemiBold"/>
         <Label x:Name="instructionMessage"  HorizontalAlignment="Left" Margin="339,528,0,0" VerticalAlignment="Top" Width="436" x:FieldModifier="public" FontSize="15"/>
         <Label x:Name="modeBox" Content="{Binding SelectedItem.Description, ElementName=modeChooser}" HorizontalAlignment="Left" Margin="339,528,0,0" VerticalAlignment="Top" Width="436" x:FieldModifier="public" FontSize="15" Visibility="Hidden"/>
 
