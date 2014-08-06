@@ -3,6 +3,7 @@
 open System
 open System.Windows
 open Microsoft.Kinect
+open Microsoft.Kinect
 open System.Diagnostics
 open System.Reactive.Linq
 open System.Windows.Media.Imaging
@@ -12,29 +13,39 @@ let sensor = try
                  KinectSensor.KinectSensors.[0]
              with :? System.ArgumentOutOfRangeException as e -> 
                  printfn "Kinect not found. Check connection and restart"
-                 exit(0)
+                 exit 0
                  null
 
-let skeletons : Skeleton array = [| for i in [1..6] -> new Skeleton() |]
+let skeletons = Array.zeroCreate 6
 let window = new MainWindow()
-let runOnThisThread (ui: UIElement) f = ui.Dispatcher.Invoke(new System.Action (f), null) |> ignore
-let ToPoint(s,c) = 
-            sensor.CoordinateMapper.MapSkeletonPointToColorPoint(s, c)
+let UIDispatcher = window.form.Dispatcher
+
+let postToUI (f: unit -> unit) = window.Dispatcher.InvokeAsync f |> ignore
+let ToPoint(s,c) = sensor.CoordinateMapper.MapSkeletonPointToColorPoint(s, c)
+let sendInstructionMessage message = postToUI <| fun () -> window.instructionMessage.Content <- message
+
+let trackChecker color = postToUI <| fun () -> window.ifTracked.Fill <- new Media.SolidColorBrush(Color = color)
+
+trackChecker <| Media.Color.FromRgb(200uy, 50uy, 50uy)
+
 let ColorFormat = ColorImageFormat.RgbResolution640x480Fps30
 
-let GetPoints (skeleton: Skeleton) =
+let getPoints (skeleton: Skeleton) =
     let l = skeleton.Joints.[JointType.HandLeft]
     let r = skeleton.Joints.[JointType.HandRight]
     let leftHand = ToPoint(l.Position, ColorFormat)
     let rightHand = ToPoint(r.Position, ColorFormat)
-    runOnThisThread window.ifTracked <| fun() -> 
-        window.ifTracked.Fill <- new Media.SolidColorBrush(Color = Media.Color.FromRgb(119uy, 176uy, 203uy))
+    trackChecker <| Media.Color.FromRgb(119uy, 176uy, 203uy)
     (leftHand.Y, rightHand.Y)
 
-let ExtractHands (args: SkeletonFrameReadyEventArgs) = 
+let inline isTracked (skeleton : Skeleton) = skeleton.TrackingState = SkeletonTrackingState.Tracked
+
+let ExtractHands playerId (args: SkeletonFrameReadyEventArgs) = 
     use frame = args.OpenSkeletonFrame()
-    match frame with
-        | null -> None
-        | skeletonFrame ->  skeletonFrame.CopySkeletonDataTo(skeletons)
-                            skeletons |> Array.tryFind(fun x -> x.TrackingState = SkeletonTrackingState.Tracked)
-    |> Option.map GetPoints
+    if frame = null then None 
+    else 
+        frame.CopySkeletonDataTo(skeletons)
+        let player = skeletons.[playerId]
+        if isTracked player then 
+            Some (getPoints player)
+        else None
