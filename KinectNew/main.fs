@@ -8,7 +8,7 @@ open Connection
 open Graphics
 open Microsoft.Kinect
 open Kinect.Toolbox
-
+open Microsoft.FSharp.Collections
                                      
 printfn "Press Enter to run the app"
 Console.ReadLine() |> ignore
@@ -28,28 +28,49 @@ let breakConnectionDispose =
 [<EntryPoint;STAThread>]
 let main _ =
     let kinect = tryAccessKinect()
-    window.conectionButton.Checked.Subscribe(fun _ -> if setTrikConnection() then printfn "ASDASD";startKinectApp kinect) |> ignore
+    window.conectionButton.Checked.Subscribe(fun _ -> if setTrikConnection() then startKinectApp kinect) |> ignore
     
-    let skeletonFrame = kinect.SkeletonFrameReady.Select ProccesSkeletonFrame
+    let skeletonFrame = kinect.SkeletonFrameReady.Select ExtractTrackedSkeletons
     
-    
-    let getPlayer n = 
-        if n < 1 then failwith "Wrong Player number"
-        else  skeletonFrame 
-              |> Observable.choose (fun x -> if x.Length >= n then Some x.[n - 1] else None)
+    let inline trackingId (x: Skeleton) = x.TrackingId
 
-    let player1 = getPlayer 1
-    let player2 = getPlayer 2
-    let readytoSend controller (commands: IObservable<_>) = commands.Subscribe (SendRequest controller)
-    let StartGame (player: IObservable<_>) controller = 
-        player.Select(getPoints) 
-        |> toFlappingHands
-        |> readytoSend controller
 
-    let disp1 = StartGame player1 0
-    let disp2 = StartGame player2 1
+    let skeltonsId = skeletonFrame |> Observable.map (Array.map trackingId) |> Observable.DistinctUntilChanged
+
+    use printer = skeltonsId.Subscribe(fun ts -> mvvm.TrackedSkeletons <- ts)
+
+    let activeSkeletons = new Collections.Generic.List<int * IDisposable>(5)
+    let safeAddSub a = lock activeSkeletons <| fun () -> activeSkeletons.Add a            
+    let safeRemove id = lock activeSkeletons <| fun () -> 
+            let i = activeSkeletons.FindIndex( fun (i,_) -> i = id)
+            if i >= 0 then let _,d = activeSkeletons.[i]
+                           activeSkeletons.RemoveAt(i)
+                           d.Dispose()
+
+
+    let joinPlayer n = 
+        let robot = 0
+        let points = skeletonFrame |> Observable.choose (Array.tryFind (fun x -> trackingId x = n))
+                      |> Observable.choose getPoints 
+        let kick = ref false            
+        let d1 = points |> toFlappingHands |> Observable.subscribe(sendRequest robot (fun () -> safeRemove n) kick)
+        let d2 = points |> Observable.map (fun ((l,r),_) -> 10 > abs (l - r)) |> Observable.DistinctUntilChanged
+                 |> Observable.subscribe (fun _ -> (:=) kick true)
+        new Reactive.Disposables.CompositeDisposable(d1, d2)
+    
+    let updateSubscriptions (ids : int[]) =
+            for id in ids do
+                let i = activeSkeletons.FindIndex(fun (i,_) -> i = id)
+                if i < 0 then
+                    safeAddSub (id, joinPlayer id)
+
+            for k,_ in activeSkeletons |> Linq.Enumerable.ToList do
+                match ids |> Array.tryFind ((=) k) with
+                | Some _ -> ()
+                | None -> safeRemove k
+
+    use subscriptionManager = skeltonsId.Subscribe(updateSubscriptions)
 
     use videoDisp = kinect.ColorFrameReady.Subscribe ColorFrameReady
     let app = new Application()
     app.Run(window)
-

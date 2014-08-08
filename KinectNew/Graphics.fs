@@ -36,16 +36,16 @@ ifTrackedSet <| Media.Color.FromRgb(200uy, 50uy, 50uy)
 
 let private allSkeletons: Skeleton[] = Array.zeroCreate 6
 
-let ProccesSkeletonFrame (ev: SkeletonFrameReadyEventArgs) =     
+let ExtractTrackedSkeletons (ev: SkeletonFrameReadyEventArgs) =     
     use frame = ev.OpenSkeletonFrame()
     if frame = null then 
         failwith "frame is null"
     else 
+        
         frame.CopySkeletonDataTo(allSkeletons)
         let trackedSkeletons = 
             allSkeletons |> Array.choose (fun x -> if isSkeletonTracked x then Some x else None)
-        mvvm.TrackedSkeletons <- trackedSkeletons |> Array.map (fun x -> x.TrackingId)
-        trackedSkeletons
+        trackedSkeletons |> Array.sortBy (fun x -> x.TrackingId)
         
          
 
@@ -66,7 +66,6 @@ let WindowLoaded (sender : obj) (args: EventArgs) =
  
 let WindowUnloaded (sender : obj) (args: EventArgs) = 
     sensor.Stop()
-
 
 
 (*let mutable handsDispose = FlappyHands

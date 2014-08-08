@@ -39,17 +39,18 @@ type private Notifier<'T>() =
         member self.Dispose() = self.OnCompleted()
 
 
-let TakeDerivative(source: IObservable<int*int>) = 
-    let currentKey = (0, 0)
+let TakeDerivative(source: IObservable<(int*int)*(int*int)>) = 
+    let previousKey = ref (0, 0)
     let notifier = new Notifier<int*int>()
 
     let observer = { new System.IObserver<_> with
-                        member self.OnNext(x) = 
+                        member self.OnNext((_,x)) = 
                             try 
                                 let l,r = x
-                                let prevL, prevR = currentKey
-                                printfn "prev = %A, new = %A, diff %A" currentKey x (l - prevL, r - prevR)
-                                notifier.OnNext (l - prevL, r - prevR)
+                                let pL, pR = !previousKey
+                                //printfn "prev = %A, new = %A, diff %A" !previousKey x (l - pL, r - pR)
+                                previousKey := x 
+                                notifier.OnNext (l - pL, r - pR)
 
                             with e -> notifier.OnError e
 
@@ -80,19 +81,18 @@ let ToPoint(s,c) =
 let inline isJointInferred (joint: Joint) = joint.TrackingState = JointTrackingState.Inferred
 let inline isSkeletonTracked (skeleton : Skeleton) = skeleton.TrackingState = SkeletonTrackingState.Tracked
 
-let prevPoints = ref (0, 0)// Check if two players
-
 let getPoints (skeleton: Skeleton) =
     let l = skeleton.Joints.[JointType.HandLeft]
     let r = skeleton.Joints.[JointType.HandRight]
     if (isJointInferred l) && (isJointInferred r) 
-    then !prevPoints
+    then None
     else
         let cf = ColorImageFormat.RgbResolution640x480Fps30
         let leftHand = ToPoint(l.Position, cf)
         let rightHand = ToPoint(r.Position, cf)
-        prevPoints := (leftHand.Y, rightHand.Y)
-        !prevPoints
+        let tmp = (leftHand.X, rightHand.X), (leftHand.Y, rightHand.Y)
+        Some tmp
+        
 
     (*
 [<Struct>]
@@ -116,23 +116,24 @@ let HandsAverage (source: System.Collections.Generic.IList<Hands>) =
 
 
 let TupleAverage (source: System.Collections.Generic.IList<int*int>) = 
-    let mutable sumL = 0
-    let mutable sumR = 0
+    let mutable maxL = 0
+    let mutable maxR = 0
     for (l, r) in source do
-        sumL <- sumL + l
-        sumR <- sumR + r
-    let length = source.Count
-    (sumL/length, sumR/length)
+        maxL <- Math.Max(maxL, abs l)
+        maxR <- Math.Max(maxR, abs r)
+    (maxL, maxR)
 
+
+(*
 let calibrate (handPositions: Collections.Generic.IList<int>) =
     printfn "%A %A calibration\n" maxHeight minHeight
-
 
 
 let floatingFiltering (l,r) =
     let lim x = 
         let x' = double x
         x' > minHeight && x' < maxHeight in (lim l) && (lim r)
+        
 
 let floatingScale (l,r) = 
 
@@ -140,25 +141,27 @@ let floatingScale (l,r) =
         let x = float x'
         100. - ((x - minHeight) * 100. / (maxHeight - minHeight)) 
     helper l, helper r
-
+    *)
 
 let flappingScale (l,r) =
+  //  printfn "%A" (l,r)
     let helper x = 
         if x < 2 * eps then 0
-        //elif x > 100 then 100  UNCOMMENT!!!!!!!!!!!!!!!!!!!!!!!!!!
+        elif x > 100 then 100
         else x
-    helper l, helper r
+    helper <| abs (2 * l), helper <| abs (2 * r)
 
-
+let Buffer (size:int) (skip: int) (x: IObservable<_>) = Observable.Buffer(x, size, skip)
 let toFlappingHands (hands: IObservable<_>) =
-    (*TakeDerivative *)
-    (hands).Buffer(20, 5).Select(TupleAverage)
-    |> Observable.filter (fun (l,r) -> (l > eps) || (r > eps) ) 
+    (TakeDerivative
+    hands)
+    |> Buffer 10 1
+    |> Observable.map TupleAverage
     |> Observable.map flappingScale
 
-
-let toFloatingHands hands = 
+(*let toFloatingHands hands = 
     Observable.Buffer(hands, 20, 2)
     |> Observable.map TupleAverage  
     |> Observable.filter floatingFiltering
     |> Observable.map floatingScale
+*)

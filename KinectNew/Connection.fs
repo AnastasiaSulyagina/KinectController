@@ -10,7 +10,7 @@ open Graphics
 
 let mutable port = window.portBox.Text
 let mutable ipAddr = window.IPBox.Text
-let mutable sender = null 
+let mutable sender(*: IO.Stream*) = null 
 
 
 let tryAccessKinect() = try 
@@ -33,27 +33,32 @@ let startKinectApp (sensor: KinectSensor) =
     window.modeChooser.IsEnabled <- true
 
 
-let SendRequest controller (l,r) =
+let sendRequest controller compensation kick (l,r) =
     sendInstructionMessage ""
     //printfn "%A %A %A\n" l r (mode = GameMode.Flapping)
-    let req = [| byte l; byte r; 48uy; 48uy|]
+    let req = [| byte l; byte r; (if !kick then 1uy else 0uy); 48uy|]
+    kick := false
     if sender <> null then
-        printfn "values %d %d controller %d" l r controller
-        //sender.GetStream().Write(req, 0, req.Length)
-    else 
+        printfn "values %d %d kick %b controller %d" l r !kick controller
+        try 
+            ()//sender.Write(req, 0, req.Length)
+        with e -> compensation()
+            
+    else
+        compensation() 
         sendInstructionMessage "No connection with trik. Check IP, Port and restart"
    
 let setTrikConnection() = 
     port <- window.portBox.Text
     ipAddr <- window.IPBox.Text
     sendInstructionMessage "Establishing connection. Please wait ..."
-    sender <- new Object()(*try
+    sender <- new Object()(*//new IO.FileStream("NUL", IO.FileMode.OpenOrCreate)(*try
                 runOnThisThread window.instructionMessage <| fun() -> 
                     window.instructionMessage.Content <- "Trik connected. Choose the mode and start playing."
-                new TcpClient(ipAddr, Convert.ToInt32(port))
+                new TcpClient(ipAddr, Convert.ToInt32(port)).GetStream()
                 with :? SocketException as e ->
                 runOnThisThread window.instructionMessage <| fun() -> 
                     window.instructionMessage.Content <- "No connection with trik. Check IP, Port and restart"
                     window.conectionButton.IsChecked <- new Nullable<bool>(false)
-                null*)
+                null*)*)
     sender <> null

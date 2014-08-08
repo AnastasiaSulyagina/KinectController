@@ -61,6 +61,10 @@
       <HintPath>..\packages\Coding4Fun.Kinect.KinectService.WpfClient.1.6.0\lib\Coding4Fun.Kinect.KinectService.WpfClient.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="FSharpx.Collections">
+      <HintPath>..\packages\FSharpx.Collections.1.9.3\lib\net35\FSharpx.Collections.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Kinect.Toolbox">
       <HintPath>..\packages\KinectToolbox.1.3.0.0\lib\Kinect.Toolbox.dll</HintPath>
       <Private>True</Private>
