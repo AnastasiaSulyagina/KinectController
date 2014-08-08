@@ -45,9 +45,12 @@
     <None Include="packages.config" />
     <None Include="App.config" />
     <Compile Include="SkeletonProcessing.fs" />
-    <Compile Include="Connection.fs" />
+    <Compile Include="GameMode.fs" />
     <Compile Include="Graphics.fs" />
+    <Compile Include="Connection.fs" />
     <Compile Include="main.fs" />
+    <None Include="FaceTrackLib.dll" />
+    <None Include="FaceTrackData.dll" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Coding4Fun.Kinect.KinectService.Common">
@@ -58,7 +61,19 @@
       <HintPath>..\packages\Coding4Fun.Kinect.KinectService.WpfClient.1.6.0\lib\Coding4Fun.Kinect.KinectService.WpfClient.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Kinect.Toolbox">
+      <HintPath>..\packages\KinectToolbox.1.3.0.0\lib\Kinect.Toolbox.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Kinect.Toolbox.Voice">
+      <HintPath>..\packages\KinectToolbox.1.3.0.0\lib\Kinect.Toolbox.Voice.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Microsoft.Kinect, Version=1.8.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35" />
+    <Reference Include="Microsoft.Kinect.Toolkit.FaceTracking">
+      <HintPath>..\packages\KinectToolbox.1.3.0.0\lib\Microsoft.Kinect.Toolkit.FaceTracking.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core" />
     <Reference Include="PresentationCore" />
@@ -95,11 +110,6 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\GameMode\GameMode.fsproj">
-      <Name>GameMode</Name>
-      <Project>{b87cac32-39b9-4c06-b176-c11f7609b37e}</Project>
-      <Private>True</Private>
-    </ProjectReference>
     <ProjectReference Include="..\WpfApplication1\WpfApplication1.csproj">
       <Name>WpfApplication1</Name>
       <Project>{aba2adb6-5e3e-4540-b9f1-4d7452ccf991}</Project>

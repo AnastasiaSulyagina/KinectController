@@ -20,9 +20,6 @@ namespace WpfApplication1
     {
         public MainWindow()
         {   
-              
-            var mvvm = new GameMode.MVVM();
-            this.DataContext = mvvm;
             InitializeComponent();
         }
     }

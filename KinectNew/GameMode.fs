@@ -1,6 +1,5 @@
-﻿namespace GameMode
+﻿module GameMode
 open System.ComponentModel 
-open Microsoft.
 
 [<RequireQualifiedAccess>]
 type GameMode = Flapping | Floating
@@ -16,7 +15,7 @@ type MVVM() as self =
     let props = ["Mode"; "Name"; "Description"; "Detected"]
     let ev = new Event<_,_>()  
     let mutable mode = GameMode.Flapping
-    let trackedSkeletons: Skeleton[] = Array.zeroCreate 6
+    let mutable trackedSkeletons: int[] = Array.empty
     
     let raisePropertyChanged() = props |> List.iter(fun x -> ev.Trigger(self, new PropertyChangedEventArgs(x)))
 
@@ -29,8 +28,11 @@ type MVVM() as self =
     
     member self.TrackedSkeletons
         with get() = trackedSkeletons
-        and set x = Array.blit x 0 trackedSkeletons 0 trackedSkeletons.Length
-                    raisePropertyChanged()
+        and set x = 
+            let y = Array.sort x
+            if trackedSkeletons <> y then
+                trackedSkeletons <- y
+                raisePropertyChanged()
                     
     member self.Mode 
         with get() = mode 
