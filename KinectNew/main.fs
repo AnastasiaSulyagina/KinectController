@@ -1,6 +1,4 @@
-﻿module main
-
-open System
+﻿open System
 open System.Windows
 open System.Reactive.Linq
 open WpfApplication1
@@ -8,106 +6,71 @@ open GameMode
 open SkeletonProcessing
 open Connection
 open Graphics
-
-let mutable minHeight = 20.0
-let mutable maxHeight = 400.0
-let eps = 10
-let mutable mode = (window.modeChooser.SelectedValue :?> GameMode)
-let hands = sensor.SkeletonFrameReady |> Observable.choose ExtractHands 
-   
-let calibrate (handPositions: Collections.Generic.IList<int>) =
-    printfn "%A %A calibration\n" maxHeight minHeight
-
-let toDifference prev x =
-    let res = abs(x - !prev)
-    prev := x
-    res 
-
-let floatingScale (x: float) = 
-    int <| 100.0 - ((x - minHeight) * 100.0 / (maxHeight - minHeight)) 
-
-let flappingScale (x: int) = 
-    if x < 2 * eps then 0
-    elif x > 100 then 100
-    else x
-
-let toFlappingHand (splitter: int*int->int) = 
-    hands |> Observable.map splitter 
-          |> Observable.map (toDifference (ref 0))
-          |> fun x -> Observable.Buffer(x, 20, 5)
-          |> Observable.map (System.Linq.Enumerable.Average >> (*) 4.3 >> int)
-          |> Observable.filter ((<) eps) 
-          |> Observable.map flappingScale
-
-let toFloatingHand (splitter: int*int->int) =    
-    hands |> Observable.map splitter
-          |> fun x -> Observable.Buffer(x, 20, 2)
-          |> Observable.map System.Linq.Enumerable.Average
-          |> Observable.filter (fun x -> x > minHeight && x < maxHeight)
-          |> Observable.map floatingScale
-
-let FlappyHands = Observable.CombineLatest([toFlappingHand fst; toFlappingHand snd])
-let FloatingHands = Observable.CombineLatest([toFloatingHand fst; toFloatingHand snd])
-
-let SendRequest (request: Collections.Generic.IList<int>) =
-    runOnThisThread window.instructionMessage <| fun() -> 
-        window.instructionMessage.Content <- ""
-    printfn "%A %A %A\n" request.[0] request.[1] (mode = GameMode.Flapping)
-    let req = [|Convert.ToByte((request.[0]) : int); Convert.ToByte((request.[1]) : int); 48uy; 48uy|]
-    if sender <> null then
-        sender.GetStream().Write(req, 0, req.Length)
-    else 
-        runOnThisThread window.instructionMessage <| fun() -> 
-                    window.instructionMessage.Content <- "No connection with trik. Check IP, Port and restart"
-   
-let ts = new TimeSpan(0, 0, 15)
-let tm = DateTimeOffset.Now + ts
-
-//FloatingHands.TakeUntil(tm)|>
-//    Observable.subscribe calibrate |> ignore
-
-let mutable handsDispose = FlappyHands
-                            //|> fun x -> Observable.SkipUntil(x, tm)
-                            |> Observable.subscribe SendRequest                
-
-let changeMode args =
-    mode <- window.modeChooser.SelectedValue :?> GameMode
-    sensor.SkeletonStream.Disable()
-    handsDispose.Dispose()
-    if mode = GameMode.Flapping then
-        handsDispose <- FlappyHands.Subscribe(SendRequest)
-    else 
-        handsDispose <- FloatingHands.Subscribe(SendRequest)
-    
-    sensor.SkeletonStream.Enable()
-    runOnThisThread window.instructionMessage <| fun() -> 
-        window.instructionMessage.Visibility <- Visibility.Hidden
-    runOnThisThread window.modeBox <| fun() -> 
-        window.modeBox.Visibility <- Visibility.Visible
-
-let modesDispose = window.modeChooser.SelectionChanged 
-                    |> Observable.subscribe changeMode 
-
-let establishConnectionDispose = window.conectionButton.Checked
-                                    |> Observable.subscribe setConnection
-
-let breakConnectionDispose = window.conectionButton.Unchecked
-                                    |> Observable.subscribe (fun x -> 
-                                                                runOnThisThread window.instructionMessage <| fun() -> 
-                                                                    window.instructionMessage.Content <- "No connection with trik. Check IP, Port and restart"
-                                                                sender <- null)
-
-let colorDispose = sensor.ColorFrameReady 
-                    |> Observable.subscribe ColorFrameReady
-                                                                
+open Microsoft.Kinect
+open Kinect.Toolbox
+open Microsoft.FSharp.Collections
+                                     
 printfn "Press Enter to run the app"
 Console.ReadLine() |> ignore
 window.Loaded.AddHandler(new RoutedEventHandler(WindowLoaded))
 window.Show()
-
+printfn "LOLOLOL"
 window.Unloaded.AddHandler(new RoutedEventHandler(WindowUnloaded))
 
-[<STAThread>]
-do
-    let app = new Application() in
-    app.Run(window) |> ignore
+
+let breakConnectionDispose = 
+    window.conectionButton.Unchecked
+    |> Observable.subscribe 
+        (fun _ -> 
+            sendInstructionMessage "No connection with trik. Check IP, Port and restart"
+            sender <- null)
+
+[<EntryPoint;STAThread>]
+let main _ =
+    let kinect = tryAccessKinect()
+    window.conectionButton.Checked.Subscribe(fun _ -> if setTrikConnection() then startKinectApp kinect) |> ignore
+    
+    let skeletonFrame = kinect.SkeletonFrameReady.Select ExtractTrackedSkeletons
+    
+    let inline trackingId (x: Skeleton) = x.TrackingId
+
+
+    let skeltonsId = skeletonFrame |> Observable.map (Array.map trackingId) |> Observable.DistinctUntilChanged
+
+    use printer = skeltonsId.Subscribe(fun ts -> mvvm.TrackedSkeletons <- ts)
+
+    let activeSkeletons = new Collections.Generic.List<int * IDisposable>(5)
+    let safeAddSub a = lock activeSkeletons <| fun () -> activeSkeletons.Add a            
+    let safeRemove id = lock activeSkeletons <| fun () -> 
+            let i = activeSkeletons.FindIndex( fun (i,_) -> i = id)
+            if i >= 0 then let _,d = activeSkeletons.[i]
+                           activeSkeletons.RemoveAt(i)
+                           d.Dispose()
+
+
+    let joinPlayer n = 
+        let robot = 0
+        let points = skeletonFrame |> Observable.choose (Array.tryFind (fun x -> trackingId x = n))
+                      |> Observable.choose getPoints 
+        let kick = ref false            
+        let d1 = points |> toFlappingHands |> Observable.subscribe(sendRequest robot (fun () -> safeRemove n) kick)
+        let d2 = points |> Observable.map (fun ((l,r),_) -> 10 > abs (l - r)) |> Observable.DistinctUntilChanged
+                 |> Observable.subscribe (fun _ -> (:=) kick true)
+        new Reactive.Disposables.CompositeDisposable(d1, d2)
+    
+    let updateSubscriptions (ids : int[]) =
+            for id in ids do
+                let i = activeSkeletons.FindIndex(fun (i,_) -> i = id)
+                if i < 0 then
+                    safeAddSub (id, joinPlayer id)
+
+            for k,_ in activeSkeletons |> Linq.Enumerable.ToList do
+                match ids |> Array.tryFind ((=) k) with
+                | Some _ -> ()
+                | None -> safeRemove k
+
+    use subscriptionManager = skeltonsId.Subscribe(updateSubscriptions)
+
+    use videoDisp = kinect.ColorFrameReady.Subscribe ColorFrameReady
+    let app = new Application()
+    app.Run(window)

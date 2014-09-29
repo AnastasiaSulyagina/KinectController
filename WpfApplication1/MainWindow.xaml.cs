@@ -19,9 +19,7 @@ namespace WpfApplication1
     public partial class MainWindow : Window
     {
         public MainWindow()
-        {
-            var mvvm = new GameMode.MVVM();
-            this.DataContext = mvvm;
+        {   
             InitializeComponent();
         }
     }

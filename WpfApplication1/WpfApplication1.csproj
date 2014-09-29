@@ -9,7 +9,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>WpfApplication1</RootNamespace>
     <AssemblyName>WpfApplication1</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
@@ -24,6 +24,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -33,8 +34,24 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Coding4Fun.Kinect.KinectService.Common">
+      <HintPath>..\packages\Coding4Fun.Kinect.KinectService.WpfClient.1.6.0\lib\Coding4Fun.Kinect.KinectService.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Coding4Fun.Kinect.KinectService.WpfClient">
+      <HintPath>..\packages\Coding4Fun.Kinect.KinectService.WpfClient.1.6.0\lib\Coding4Fun.Kinect.KinectService.WpfClient.dll</HintPath>
+    </Reference>
+    <Reference Include="Kinect.Toolbox">
+      <HintPath>..\packages\KinectToolbox.1.3.0.0\lib\Kinect.Toolbox.dll</HintPath>
+    </Reference>
+    <Reference Include="Kinect.Toolbox.Voice">
+      <HintPath>..\packages\KinectToolbox.1.3.0.0\lib\Kinect.Toolbox.Voice.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Kinect.Toolkit.FaceTracking">
+      <HintPath>..\packages\KinectToolbox.1.3.0.0\lib\Microsoft.Kinect.Toolkit.FaceTracking.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
@@ -85,6 +102,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -95,10 +113,8 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\GameMode\GameMode.fsproj">
-      <Project>{b87cac32-39b9-4c06-b176-c11f7609b37e}</Project>
-      <Name>GameMode</Name>
-    </ProjectReference>
+    <Content Include="FaceTrackData.dll" />
+    <Content Include="FaceTrackLib.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
